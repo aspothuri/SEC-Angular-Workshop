@@ -40,6 +40,48 @@ To build the project run:
 - Angular CLI: `npm install -g @angular/cli`
 - Code editor (VS Code recommended)
 
+**Setup**
+
+Download an IDE/text editor like [VS Code](https://code.visualstudio.com/)
+
+Download [Node.js](https://nodejs.org/)
+
+Start your terminal in your code folder
+
+Make sure you have Node.js and NPM working:
+
+> node -v
+> npm -v
+
+If either of these fail, go back to step 2 and install Node.js
+
+Install angular using npm install and make sure it installed
+
+> npm install -g @angular/cli
+> ng version
+
+Now, create the Angular project with boilerplate
+
+> ng new club-dashboard --routing=false --style=css
+
+Click enter at every yes or no option (default option is no)
+
+After a few second you should see a project folder called club-dashboard
+
+Then, we need to set up the services and components required for the app
+
+> ng generate service members
+> ng generate component member-add
+> ng generate component member-list
+
+Think of these as generating the objects and functions of the project
+
+To run your app, use the command
+
+> ng serve -o
+
+Now you are ready to start coding!!!
+
 **Quick Start**
 
 - **Open terminal** and run:
@@ -62,6 +104,13 @@ ng serve --open
 - `src/app/app.config.ts`
 - `src/app/app.ts` and `app.html`
 - `src/app/*.css` for UI polish
+
+**Workshop flow (45 minutes)**
+
+- 0–5 min: Project structure and run the app
+- 5–20 min: Implement/inspect `MembersService` and `member-add` component
+- 20–35 min: Implement/inspect `member-list` and wiring to detail
+- 35–45 min: Implement `member-detail`, routing, polish, and exercises
 
 **Step-by-step: what to write and where**
 
@@ -201,7 +250,7 @@ Edit `src/app/app.css`, `member-list.css`, `member-add.css`, and `member-detail.
 - `ng serve --open` and test: add, toggle, view details, edit name, remove.
 - If you see compile errors, run `ng build` to see file/line hints.
 
-**Exercises to expand**
+**Exercises**
 
 - Add validation to the Add form
 - Add a confirmation dialog before remove
