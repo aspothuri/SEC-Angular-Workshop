@@ -1,25 +1,163 @@
-# ClubDashboard — Build From Scratch
+# Angular Workshop: Building a Club Dashboard
 
-This repository contains a small Angular app (ClubDashboard) used for teaching Angular concepts. The README below is a copy-paste, build-from-scratch guide: create a new Angular app and paste each file's contents into the matching path.
+Welcome! In this hands-on workshop you'll learn core Angular concepts by building a **Club Members Dashboard** from scratch. By the end, you'll understand:
 
-Prerequisites
+- Components (the building blocks of Angular apps)
+- Services & Dependency Injection (sharing data across components)
+- Data binding (connecting TypeScript to templates)
+- Observables & the AsyncPipe (reactive data flow)
+- Routing (navigating between views)
 
-- Node.js (16+ recommended)
-- npm
-- Angular CLI (optional; helpful): `npm install -g @angular/cli`
+**Time:** ~45 minutes  
+**Difficulty:** Beginner-friendly (some JavaScript/TypeScript experience helpful)
 
-Quick start
+---
+
+## Prerequisites
+
+Before we start, make sure you have:
+
+1. **Node.js** (v16 or higher) — [Download here](https://nodejs.org/)
+2. **A code editor** — VS Code recommended
+3. **Angular CLI** — Install globally:
+   ```bash
+   npm install -g @angular/cli
+   ```
+
+Verify your setup:
 
 ```bash
-# create a new workspace (or use an existing one)
-ng new club-dashboard --defaults --routing=false --style=css
-cd club-dashboard
-npm install
+node --version   # Should show v16+
+ng version       # Should show Angular CLI version
 ```
 
-Replace the `src/app` contents with the files below. Each section is the exact contents for a file path under `src/app`.
+---
 
-1. `src/app/members.ts` — in-memory state service
+## Part 1: Create the Project (5 min)
+
+### Step 1.1 — Generate a new Angular app
+
+Open your terminal and run:
+
+```bash
+ng new club-dashboard --style=css --ssr=false
+```
+
+When prompted:
+
+- **Would you like to enable autocompletion?** → No (or Yes if you want)
+- **Would you like to share usage data?** → No
+
+This creates a new folder `club-dashboard` with a fully working Angular app.
+
+### Step 1.2 — Open in VS Code and start the dev server
+
+```bash
+cd club-dashboard
+code .
+```
+
+In the VS Code terminal, start the development server:
+
+```bash
+ng serve --open
+```
+
+Your browser should open to `http://localhost:4200` showing the Angular welcome page.
+
+> **Checkpoint:** You should see "Hello, club-dashboard" in your browser. Keep the server running!
+
+---
+
+## Part 2: Understanding Components (10 min)
+
+### What is a Component?
+
+A **component** is a reusable piece of UI. Every component has:
+
+- A **TypeScript class** (the logic)
+- An **HTML template** (the view)
+- Optional **CSS styles** (the look)
+
+### Step 2.1 — Explore the root component
+
+Open `src/app/app.ts`. You'll see something like:
+
+```typescript
+@Component({
+  selector: "app-root",
+  // ...
+})
+export class App {}
+```
+
+**Key concepts:**
+
+- `@Component` is a **decorator** that tells Angular "this class is a component"
+- `selector: 'app-root'` means this component is used as `<app-root>` in HTML
+- `templateUrl` points to the HTML file
+- `styleUrls` points to the CSS file
+
+### Step 2.2 — Simplify the root component
+
+Replace the contents of `src/app/app.html` with:
+
+```html
+<h1>Club Members Dashboard</h1>
+<p>Welcome to our club!</p>
+```
+
+Save the file. Your browser should automatically refresh and show your new content.
+
+> **Checkpoint:** You should see "Club Members Dashboard" heading in your browser.
+
+---
+
+## Part 3: Create a Service for Data (10 min)
+
+### What is a Service?
+
+A **service** is a class that holds data or logic that multiple components can share. We use **Dependency Injection** to provide services to components.
+
+### Step 3.1 — Generate the members service
+
+In your terminal (open a new one if needed, keep ng serve running):
+
+```bash
+ng generate service members --skip-tests
+```
+
+This creates `src/app/members.ts`.
+
+### Step 3.2 — Define the Member interface
+
+Open `src/app/members.ts` and add an interface above the class:
+
+```typescript
+import { Injectable } from "@angular/core";
+
+// Add this interface - it describes what a Member looks like
+export interface Member {
+  id: number;
+  name: string;
+  active: boolean;
+}
+
+@Injectable({
+  providedIn: "root",
+})
+export class MembersService {
+  // We'll add code here next
+}
+```
+
+**Why an interface?** TypeScript interfaces define the "shape" of our data. This gives us autocompletion and catches errors early.
+
+### Step 3.3 — Add member data using BehaviorSubject
+
+We'll use RxJS `BehaviorSubject` to store our members. This lets components subscribe to changes.
+
+Update `members.ts`:
 
 ```typescript
 import { Injectable } from "@angular/core";
@@ -31,1049 +169,422 @@ export interface Member {
   active: boolean;
 }
 
-@Injectable({ providedIn: "root" })
+@Injectable({
+  providedIn: "root",
+})
 export class MembersService {
+  // Private BehaviorSubject holds the current list
   private _members = new BehaviorSubject<Member[]>([
     { id: 1, name: "Alice", active: true },
     { id: 2, name: "Bob", active: false },
   ]);
 
+  // Public observable that components can subscribe to
   members$ = this._members.asObservable();
+}
+```
 
-  add(name: string) {
-    const list = this._members.getValue();
-    const id = list.length ? Math.max(...list.map((m) => m.id)) + 1 : 1;
-    this._members.next([...list, { id, name, active: true }]);
-  }
+**Key concepts:**
 
-  toggle(m: Member) {
-    this._members.next(
-      this._members
-        .getValue()
-        .map((x) => (x.id === m.id ? { ...x, active: !x.active } : x)),
-    );
-  }
+- `BehaviorSubject` is like a variable that components can "watch" for changes
+- `members$` (the `$` suffix is a convention for observables) is what components subscribe to
+- `providedIn: 'root'` means one instance is shared across the whole app
 
-  updateName(id: number, name: string) {
-    this._members.next(
-      this._members.getValue().map((x) => (x.id === id ? { ...x, name } : x)),
-    );
-  }
+> **Checkpoint:** No visible changes yet, but the service is ready!
 
-  remove(id: number) {
-    this._members.next(this._members.getValue().filter((x) => x.id !== id));
+---
+
+## Part 4: Display the Member List (10 min)
+
+### Step 4.1 — Generate the member-list component
+
+```bash
+ng generate component member-list --skip-tests
+```
+
+This creates a folder `src/app/member-list/` with three files.
+
+### Step 4.2 — Inject the service into the component
+
+Open `src/app/member-list/member-list.ts` and update it:
+
+```typescript
+import { Component } from "@angular/core";
+import { AsyncPipe, NgFor } from "@angular/common";
+import { MembersService } from "../members";
+
+@Component({
+  selector: "app-member-list",
+  standalone: true,
+  imports: [AsyncPipe, NgFor],
+  templateUrl: "./member-list.html",
+  styleUrl: "./member-list.css",
+})
+export class MemberList {
+  // Inject the service through the constructor
+  constructor(private membersService: MembersService) {}
+
+  // Expose the observable to the template
+  get members$() {
+    return this.membersService.members$;
   }
 }
 ```
 
-2. `src/app/member-add/member-add.ts`
+**Key concepts:**
+
+- `constructor(private membersService: MembersService)` — Angular automatically provides the service (Dependency Injection!)
+- We use a getter `members$` to expose the observable to our template
+
+### Step 4.3 — Create the template
+
+Open `src/app/member-list/member-list.html` and replace its contents:
+
+```html
+<h2>Members</h2>
+
+<ul>
+  <li *ngFor="let member of members$ | async">
+    {{ member.name }} — {{ member.active ? 'Active' : 'Inactive' }}
+  </li>
+</ul>
+```
+
+**Key concepts:**
+
+- `*ngFor` loops through each member in the array
+- `| async` subscribes to the observable and unwraps the value
+- `{{ }}` is interpolation — it displays the value in the template
+
+### Step 4.4 — Add the component to the app
+
+Open `src/app/app.ts` and import the component:
 
 ```typescript
 import { Component } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { MemberList } from "./member-list/member-list";
+
+@Component({
+  selector: "app-root",
+  standalone: true,
+  imports: [MemberList],
+  templateUrl: "./app.html",
+  styleUrl: "./app.css",
+})
+export class App {}
+```
+
+Now update `src/app/app.html`:
+
+```html
+<h1>Club Members Dashboard</h1>
+
+<app-member-list></app-member-list>
+```
+
+Save all files.
+
+> **Checkpoint:** You should see "Members" with Alice and Bob listed!
+
+---
+
+## Part 5: Add New Members (10 min)
+
+### Step 5.1 — Add the `add()` method to the service
+
+Open `src/app/members.ts` and add this method inside the class:
+
+```typescript
+add(name: string) {
+  const currentList = this._members.getValue();
+  const newId = currentList.length
+    ? Math.max(...currentList.map(m => m.id)) + 1
+    : 1;
+
+  const newMember: Member = { id: newId, name, active: true };
+
+  this._members.next([...currentList, newMember]);
+}
+```
+
+**What's happening:**
+
+1. Get the current list with `getValue()`
+2. Calculate the next ID
+3. Create a new member object
+4. Emit the updated list with `next()`
+
+### Step 5.2 — Generate the member-add component
+
+```bash
+ng generate component member-add --skip-tests
+```
+
+### Step 5.3 — Build the add form
+
+Open `src/app/member-add/member-add.ts`:
+
+```typescript
+import { Component } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { MembersService } from "../members";
 
 @Component({
   selector: "app-member-add",
   standalone: true,
-  imports: [CommonModule],
+  imports: [FormsModule],
   templateUrl: "./member-add.html",
-  styleUrls: ["./member-add.css"],
+  styleUrl: "./member-add.css",
 })
 export class MemberAdd {
-  name = "";
-  constructor(private members: MembersService) {}
+  name = ""; // This will be bound to the input
+
+  constructor(private membersService: MembersService) {}
 
   add() {
-    const n = this.name.trim();
-    if (!n) return;
-    this.members.add(n);
-    this.name = "";
+    const trimmed = this.name.trim();
+    if (!trimmed) return; // Don't add empty names
+
+    this.membersService.add(trimmed);
+    this.name = ""; // Clear the input
   }
 }
 ```
 
-3. `src/app/member-add/member-add.html`
+Open `src/app/member-add/member-add.html`:
 
 ```html
-<div class="card">
-  <div style="display:flex;gap:.5rem;align-items:center">
-    <input [(ngModel)]="name" placeholder="Add member" />
-    <button (click)="add()">Add</button>
-  </div>
+<div class="add-form">
+  <input
+    [(ngModel)]="name"
+    placeholder="Enter member name"
+    (keyup.enter)="add()"
+  />
+  <button (click)="add()">Add Member</button>
 </div>
 ```
 
-4. `src/app/member-add/member-add.css`
+**Key concepts:**
+
+- `[(ngModel)]="name"` is **two-way binding** — the input and the `name` property stay in sync
+- `(click)="add()"` is **event binding** — calls `add()` when clicked
+- `(keyup.enter)="add()"` — also triggers on Enter key
+
+### Step 5.4 — Add some basic styling
+
+Open `src/app/member-add/member-add.css`:
 
 ```css
+.add-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
 input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
   flex: 1;
-  padding: 0.45rem;
-  border: 1px solid #e6e9ee;
-  border-radius: 6px;
 }
+
 button {
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
-.card {
-  padding: 0.75rem;
-  background: #fff;
-  border: 1px solid #e6e9ee;
-  border-radius: 10px;
+
+button:hover {
+  background: #1d4ed8;
 }
 ```
 
-5. `src/app/member-list/member-list.ts`
+### Step 5.5 — Wire it into the app
+
+Update `src/app/app.ts`:
 
 ```typescript
 import { Component } from "@angular/core";
-import { CommonModule, AsyncPipe } from "@angular/common";
-import { MembersService } from "../members";
-import { RouterModule } from "@angular/router";
+import { MemberList } from "./member-list/member-list";
+import { MemberAdd } from "./member-add/member-add";
+
+@Component({
+  selector: "app-root",
+  standalone: true,
+  imports: [MemberList, MemberAdd],
+  templateUrl: "./app.html",
+  styleUrl: "./app.css",
+})
+export class App {}
+```
+
+Update `src/app/app.html`:
+
+```html
+<h1>Club Members Dashboard</h1>
+
+<app-member-add></app-member-add>
+
+<app-member-list></app-member-list>
+```
+
+Save all files.
+
+> **Checkpoint:** Type a name and click "Add Member" — it should appear in the list instantly!
+
+---
+
+## Part 6: Toggle Member Status (5 min)
+
+### Step 6.1 — Add toggle method to service
+
+Open `src/app/members.ts` and add:
+
+```typescript
+toggle(member: Member) {
+  const updated = this._members.getValue().map(m =>
+    m.id === member.id
+      ? { ...m, active: !m.active }
+      : m
+  );
+  this._members.next(updated);
+}
+```
+
+### Step 6.2 — Add toggle button to the list
+
+Update `src/app/member-list/member-list.ts`:
+
+```typescript
+import { Component } from "@angular/core";
+import { AsyncPipe, NgFor } from "@angular/common";
+import { MembersService, Member } from "../members";
 
 @Component({
   selector: "app-member-list",
   standalone: true,
-  imports: [CommonModule, AsyncPipe, RouterModule],
+  imports: [AsyncPipe, NgFor],
   templateUrl: "./member-list.html",
-  styleUrls: ["./member-list.css"],
+  styleUrl: "./member-list.css",
 })
 export class MemberList {
-  constructor(private members: MembersService) {}
+  constructor(private membersService: MembersService) {}
 
   get members$() {
-    return this.members.members$;
+    return this.membersService.members$;
   }
 
-  toggle(m: any) {
-    this.members.toggle(m);
-  }
-
-  remove(id: number) {
-    this.members.remove(id);
+  toggle(member: Member) {
+    this.membersService.toggle(member);
   }
 }
 ```
 
-6. `src/app/member-list/member-list.html`
+Update `src/app/member-list/member-list.html`:
 
 ```html
-<div class="card">
-  <ul class="members">
-    <li *ngFor="let m of members$ | async">
-      <div class="member-label">
-        <a [routerLink]="['/members', m.id]" class="member-name"
-          >{{ m.name }}</a
-        >
-        <div class="member-meta">{{ m.active ? 'Active' : 'Inactive' }}</div>
-      </div>
-      <div>
-        <button (click)="toggle(m)" class="secondary">Toggle</button>
-        <button (click)="remove(m.id)">Remove</button>
-      </div>
-    </li>
-  </ul>
-</div>
+<h2>Members</h2>
+
+<ul>
+  <li *ngFor="let member of members$ | async" [class.inactive]="!member.active">
+    <span>{{ member.name }} — {{ member.active ? 'Active' : 'Inactive' }}</span>
+    <button (click)="toggle(member)">Toggle</button>
+  </li>
+</ul>
 ```
 
-7. `src/app/member-list/member-list.css`
+**New concept:**
+
+- `[class.inactive]="!member.active"` — conditionally adds the `inactive` CSS class
+
+Add to `src/app/member-list/member-list.css`:
 
 ```css
-.members {
+ul {
   list-style: none;
   padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
+
 li {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem;
-  background: #fff;
-  border: 1px solid #e6e9ee;
-  border-radius: 6px;
-}
-.member-label {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-}
-.member-name {
-  font-weight: 600;
-}
-.member-meta {
-  color: #666;
-  font-size: . ninerem;
-}
-.secondary {
-  background: #f3f4f6;
-  color: #111;
-}
-@media (max-width: 560px) {
-  li {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-```
-
-8. `src/app/member-detail/member-detail.ts`
-
-```typescript
-import { Component } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import { ActivatedRoute, Router, RouterModule } from "@angular/router";
-import { MembersService } from "../members";
-import { map } from "rxjs/operators";
-import { FormsModule } from "@angular/forms";
-
-@Component({
-  selector: "app-member-detail",
-  standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
-  templateUrl: "./member-detail.html",
-  styleUrls: ["./member-detail.css"],
-})
-export class MemberDetail {
-  constructor(
-    private route: ActivatedRoute,
-    private members: MembersService,
-    private router: Router,
-  ) {}
-
-  get id() {
-    return Number(this.route.snapshot.paramMap.get("id"));
-  }
-
-  get member$() {
-    return this.members.members$.pipe(
-      map((list) => list.find((m) => m.id === this.id)),
-    );
-  }
-
-  name = "";
-
-  save() {
-    if (!this.name.trim()) return;
-    this.members.updateName(this.id, this.name);
-    this.router.navigate(["/"]);
-  }
-
-  toggle(m: any) {
-    this.members.toggle(m);
-  }
-
-  remove() {
-    this.members.remove(this.id);
-    this.router.navigate(["/"]);
-  }
-}
-```
-
-9. `src/app/member-detail/member-detail.html`
-
-```html
-<ng-container *ngIf="member$ | async as m; else notFound">
-  <h2>Member Details</h2>
-
-  <div class="detail">
-    <div>
-      <div class="label">Name</div>
-      <div class="value">{{ m.name }}</div>
-    </div>
-
-    <div>
-      <div class="label">Status</div>
-      <div class="value">{{ m.active ? 'Active' : 'Inactive' }}</div>
-    </div>
-  </div>
-
-  <div class="actions">
-    <input [(ngModel)]="name" placeholder="New name" />
-    <button (click)="save()">Save</button>
-    <button (click)="toggle(m)">Toggle</button>
-    <button (click)="remove()">Remove</button>
-    <a routerLink="/">Back</a>
-  </div>
-</ng-container>
-
-<ng-template #notFound>
-  <p>Member not found.</p>
-  <a routerLink="/">Back</a>
-</ng-template>
-```
-
-10. `src/app/member-detail/member-detail.css`
-
-```css
-h2 {
   margin-bottom: 0.5rem;
-}
-.detail {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-}
-.label {
-  font-size: 0.85rem;
-  color: #666;
-}
-.value {
-  font-weight: 600;
-}
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-input {
-  padding: 0.35rem;
-  border: 1px solid #ccc;
+  background: #f9fafb;
   border-radius: 4px;
 }
+
+li.inactive {
+  opacity: 0.6;
+}
+
 button {
-  padding: 0.35rem 0.6rem;
-  border-radius: 4px;
-}
-@media (max-width: 520px) {
-  .detail {
-    flex-direction: column;
-  }
-  .actions {
-    flex-direction: column;
-    width: 100%;
-  }
-  .actions button {
-    width: 100%;
-  }
-}
-```
-
-11. `src/app/dashboard/dashboard.ts`
-
-```typescript
-import { Component } from "@angular/core";
-import { AsyncPipe } from "@angular/common";
-import { MemberAdd } from "../member-add/member-add";
-import { MemberList } from "../member-list/member-list";
-import { MembersService } from "../members";
-import { map } from "rxjs";
-
-@Component({
-  selector: "app-dashboard",
-  standalone: true,
-  imports: [MemberAdd, MemberList, AsyncPipe],
-  templateUrl: "./dashboard.html",
-  styleUrls: ["./dashboard.css"],
-})
-export class Dashboard {
-  constructor(private members: MembersService) {}
-
-  get total$() {
-    return this.members.members$.pipe(map((m) => m.length));
-  }
-  get active$() {
-    return this.members.members$.pipe(
-      map((m) => m.filter((x) => x.active).length),
-    );
-  }
-}
-```
-
-12. `src/app/dashboard/dashboard.html`
-
-```html
-<h1>Club Members Dashboard</h1>
-
-<div class="stats">
-  <div>Total: <strong>{{ total$ | async }}</strong></div>
-  <div>Active: <strong>{{ active$ | async }}</strong></div>
-</div>
-
-<hr />
-
-<app-member-add></app-member-add>
-
-<hr />
-
-<app-member-list></app-member-list>
-```
-
-13. `src/app/dashboard/dashboard.css`
-
-```css
-h1 {
-  margin-bottom: 0.25rem;
-}
-.stats {
-  margin-top: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-hr {
-  margin: 1rem 0;
-}
-```
-
-14. `src/app/app.ts`
-
-```typescript
-import { Component } from "@angular/core";
-import { RouterOutlet } from "@angular/router";
-
-@Component({
-  selector: "app-root",
-  standalone: true,
-  imports: [RouterOutlet],
-  templateUrl: "./app.html",
-  styleUrls: ["./app.css"],
-})
-export class App {}
-```
-
-15. `src/app/app.html`
-
-```html
-<nav>
-  <a routerLink="/">Dashboard</a>
-</nav>
-
-<div class="app-shell">
-  <router-outlet></router-outlet>
-</div>
-```
-
-16. `src/app/app.css`
-
-```css
-:root {
-  --bg: #f6f8fa;
-  --card: #ffffff;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --border: #e6e9ee;
-}
-html,
-body {
-  height: 100%;
-}
-body {
-  margin: 0;
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial;
-  background: var(--bg);
-  color: #111827;
-}
-nav {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  padding: 0.5rem 1rem;
-}
-nav a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 600;
-}
-.app-shell {
-  max-width: 920px;
-  margin: 1.5rem auto;
-  padding: 1rem;
-}
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-}
-.stats {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  color: var(--muted);
-}
-button {
-  background: var(--accent);
-  color: white;
+  padding: 0.25rem 0.5rem;
+  background: #e5e7eb;
   border: none;
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
 }
-button.secondary {
-  background: #f3f4f6;
-  color: #111;
-}
-input {
-  padding: 0.45rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
 ```
 
-17. `src/app/app.config.ts`
-
-```typescript
-import {
-  ApplicationConfig,
-  provideBrowserGlobalErrorListeners,
-} from "@angular/core";
-import { provideRouter } from "@angular/router";
-import { Dashboard } from "./dashboard/dashboard";
-import { MemberDetail } from "./member-detail/member-detail";
-
-const routes = [
-  { path: "", component: Dashboard },
-  { path: "members/:id", component: MemberDetail },
-];
-
-export const appConfig: ApplicationConfig = {
-  providers: [provideBrowserGlobalErrorListeners(), provideRouter(routes)],
-};
-```
-
-18. `src/main.ts`
-
-```typescript
-import { bootstrapApplication } from "@angular/platform-browser";
-import { appConfig } from "./app/app.config";
-import { App } from "./app/app";
-
-bootstrapApplication(App, appConfig).catch((err) => console.error(err));
-```
-
-Run the app
-
-```bash
-npm install
-ng serve --open
-```
-
-If the build fails, run `ng build` to see compiler errors and line numbers.
-
-Suggested exercises
-
-- Add validation to the Add form (prevent blank or numeric-only names).
-- Show a confirmation modal before removing a member.
-- Add icons for active/inactive states and style list rows.
+> **Checkpoint:** Click "Toggle" — the member should dim and show "Inactive"!
 
 ---
 
-README formatting fixes: cleaned stray CSS and unclosed fences, ensured every file is complete and copy-paste ready.
+## Congratulations! 🎉
 
-# ClubDashboard
+You've built a working Angular app with:
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.1.
+✅ **Components** — MemberList, MemberAdd  
+✅ **Services** — MembersService with shared state  
+✅ **Dependency Injection** — Services injected into components  
+✅ **Data Binding** — Two-way with ngModel, event binding with (click)  
+✅ **Observables** — BehaviorSubject + AsyncPipe
 
-## Development server
+---
 
-16. `src/app/app.css` — Global styles
+## Bonus Challenges
 
-```css
-:root{
-```
+If you have extra time, try these:
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+1. **Add a Remove button** — Add a `remove(id: number)` method to the service and a delete button to each list item
 
-## Code scaffolding
+2. **Show statistics** — Display "Total: X | Active: Y" above the list using `members$.pipe(map(...))`
 
-}
+3. **Add routing** — Create a detail page for each member:
 
-html,body{height:100%;}
+   ```bash
+   ng generate component member-detail --skip-tests
+   ```
 
-body{margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;background:var(--bg);color:#111827}
+   Then configure routes in `app.config.ts`
 
-nav{background:var(--card);border-bottom:1px solid var(--border);padding:0.5rem 1rem}
+4. **Persist to localStorage** — Save members to localStorage so they survive page refresh
 
-nav a{color:var(--accent);text-decoration:none;font-weight:600}
+---
 
-.app-shell{max-width:920px;margin:1.5rem auto;padding:1rem}
+## Quick Reference
 
-.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:1rem;box-shadow:0 1px 2px rgba(16,24,40,0.04)}
+| Concept              | Syntax                     | Purpose                  |
+| -------------------- | -------------------------- | ------------------------ |
+| Interpolation        | `{{ value }}`              | Display a value          |
+| Property binding     | `[property]="value"`       | Set an element property  |
+| Event binding        | `(event)="handler()"`      | React to events          |
+| Two-way binding      | `[(ngModel)]="value"`      | Sync input with property |
+| Structural directive | `*ngFor`, `*ngIf`          | Add/remove elements      |
+| Async pipe           | `observable$ \| async`     | Subscribe in template    |
+| Class binding        | `[class.name]="condition"` | Toggle CSS class         |
 
-.stats{display:flex;gap:1rem;align-items:center;color:var(--muted)}
+---
 
-button{background:var(--accent);color:white;border:none;padding:0.45rem 0.7rem;border-radius:6px;cursor:pointer}
+## Resources
 
-button.secondary{background:#f3f4f6;color:#111}
+- [Angular Documentation](https://angular.dev)
+- [RxJS Documentation](https://rxjs.dev)
+- [Angular CLI Reference](https://angular.dev/cli)
 
-input{padding:0.45rem;border:1px solid var(--border);border-radius:6px}
-
-````
-
-17) `src/app/app.config.ts` — Router at bootstrap
-
-```typescript
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { Dashboard } from './dashboard/dashboard';
-import { MemberDetail } from './member-detail/member-detail';
-
-const routes = [
-  { path: '', component: Dashboard },
-  { path: 'members/:id', component: MemberDetail },
-];
-
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
-  ],
-};
-````
-
-18. `src/main.ts` — bootstrap
-
-```typescript
-import { bootstrapApplication } from "@angular/platform-browser";
-import { appConfig } from "./app/app.config";
-import { App } from "./app/app";
-
-bootstrapApplication(App, appConfig).catch((err) => console.error(err));
-```
-
-Run the app
-
-```bash
-npm install
-ng serve --open
-```
-
-If anything fails, run `ng build` to see compiler errors with file and line.
-
-Suggested exercises
-
-- Add validation to the Add form (prevent blank or numbers-only names).
-- Show a confirmation dialog before remove.
-- Add an icon for inactive members.
-
-That completes the full build-from-scratch README with every implemented file included above. Follow the file order and paste the contents into the corresponding files in your `club-dashboard/src/app` folder, then run `ng serve --open`.
-padding: 0.5rem 0.75rem;
-border: 1px solid #e6e6e6;
-border-radius: 6px;
-display: flex;
-align-items: center;
-justify-content: space-between;
-background: #fff;
-}
-
-.inactive {
-opacity: 0.6;
-color: #666;
-}
-
-.member-label {
-display: flex;
-gap: 0.75rem;
-align-items: center;
-}
-
-.member-name {
-font-weight: 600;
-}
-
-.member-meta {
-font-size: 0.9rem;
-color: #666;
-}
-
-li:hover {
-transform: translateY(-1px);
-box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
-}
-
-button {
-margin-left: 0.5rem;
-}
-
-@media (max-width: 560px) {
-li {
-flex-direction: column;
-align-items: flex-start;
-gap: 0.5rem;
-}
-.member-label {
-width: 100%;
-display: flex;
-justify-content: space-between;
-}
-}
-
-````
-
-8. `src/app/member-detail/member-detail.ts` — Detail component class
-
-```typescript
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { MembersService } from '../members';
-import { map } from 'rxjs/operators';
-import { FormsModule } from '@angular/forms';
-
-@Component({
-  selector: 'app-member-detail',
-  standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
-  templateUrl: './member-detail.html',
-  styleUrls: ['./member-detail.css'],
-})
-export class MemberDetail {
-  constructor(
-    private route: ActivatedRoute,
-    private members: MembersService,
-    private router: Router,
-  ) {}
-
-  get id() {
-    return Number(this.route.snapshot.paramMap.get('id'));
-  }
-
-  get member$() {
-    return this.members.members$.pipe(map((list) => list.find((m) => m.id === this.id)));
-  }
-
-  name = '';
-
-  save() {
-    if (!this.name.trim()) return;
-    this.members.updateName(this.id, this.name);
-    this.router.navigate(['/']);
-  }
-
-  toggle(m: any) {
-    this.members.toggle(m);
-  }
-
-  remove() {
-    this.members.remove(this.id);
-    this.router.navigate(['/']);
-  }
-}
-````
-
-9. `src/app/member-detail/member-detail.html` — Detail template
-
-```html
-<ng-container *ngIf="member$ | async as m; else notFound">
-  <h2>Member Details</h2>
-
-  <div class="detail">
-    <div>
-      <div class="label">Name</div>
-      <div class="value">{{ m.name }}</div>
-    </div>
-
-    <div>
-      <div class="label">Status</div>
-      <div class="value">{{ m.active ? 'Active' : 'Inactive' }}</div>
-    </div>
-  </div>
-
-  <div class="actions">
-    <input [(ngModel)]="name" placeholder="New name" />
-    <button (click)="save()">Save</button>
-    <button (click)="toggle(m)">Toggle</button>
-    <button (click)="remove()">Remove</button>
-    <a routerLink="/">Back</a>
-  </div>
-</ng-container>
-
-<ng-template #notFound>
-  <p>Member not found.</p>
-  <a routerLink="/">Back</a>
-</ng-template>
-```
-
-10. `src/app/member-detail/member-detail.css` — Detail styles
-
-```css
-h2 {
-  margin-bottom: 0.5rem;
-}
-
-.detail {
-  display: flex;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.label {
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.value {
-  font-weight: 600;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-input {
-  padding: 0.35rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-button {
-  padding: 0.35rem 0.6rem;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-@media (max-width: 520px) {
-  .detail {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  .actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .actions button {
-    width: 100%;
-  }
-}
-```
-
-11. `src/app/dashboard/dashboard.ts` — Dashboard component
-
-```typescript
-import { Component } from "@angular/core";
-import { AsyncPipe } from "@angular/common";
-import { MemberAdd } from "../member-add/member-add";
-import { MemberList } from "../member-list/member-list";
-import { MembersService } from "../members";
-import { map } from "rxjs";
-
-@Component({
-  selector: "app-dashboard",
-  standalone: true,
-  imports: [MemberAdd, MemberList, AsyncPipe],
-  templateUrl: "./dashboard.html",
-  styleUrls: ["./dashboard.css"],
-})
-export class Dashboard {
-  constructor(private members: MembersService) {}
-
-  get total$() {
-    return this.members.members$.pipe(map((m) => m.length));
-  }
-
-  get active$() {
-    return this.members.members$.pipe(
-      map((m) => m.filter((x) => x.active).length),
-    );
-  }
-}
-```
-
-12. `src/app/dashboard/dashboard.html` — Dashboard template
-
-```html
-<h1>Club Members Dashboard</h1>
-
-<div class="stats">
-  <div>Total: <strong>{{ total$ | async }}</strong></div>
-  <div>Active: <strong>{{ active$ | async }}</strong></div>
-</div>
-
-<hr />
-
-<app-member-add></app-member-add>
-
-<hr />
-
-<app-member-list></app-member-list>
-```
-
-13. `src/app/dashboard/dashboard.css` — Dashboard styles
-
-```css
-h1 {
-  margin-bottom: 0.25rem;
-}
-
-.stats {
-  margin-top: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-hr {
-  margin: 1rem 0;
-}
-```
-
-14. `src/app/app.ts` — Root component
-
-```typescript
-import { Component } from "@angular/core";
-import { RouterOutlet } from "@angular/router";
-
-@Component({
-  selector: "app-root",
-  standalone: true,
-  imports: [RouterOutlet],
-  templateUrl: "./app.html",
-  styleUrls: ["./app.css"],
-})
-export class App {}
-```
-
-15. `src/app/app.html` — Root template
-
-```html
-<nav>
-  <a routerLink="/">Dashboard</a>
-</nav>
-
-<div class="app-shell">
-  <router-outlet></router-outlet>
-</div>
-```
-
-16. `src/app/app.css` — Global styles
-
-```css
-:root {
-  --bg: #f6f8fa;
-  --card: #ffffff;
-  --muted: #6b7280;
-  --accent: #2563eb;
-  --border: #e6e9ee;
-}
-
-html,
-body {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial;
-  background: var(--bg);
-  color: #111827;
-}
-
-nav {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  padding: 0.5rem 1rem;
-}
-
-nav a {
-  color: var(--accent);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.app-shell {
-  max-width: 920px;
-  margin: 1.5rem auto;
-  padding: 1rem;
-}
-
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-}
-
-.stats {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  color: var(--muted);
-}
-
-button {
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 0.45rem 0.7rem;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-button.secondary {
-  background: #f3f4f6;
-  color: #111;
-}
-
-input {
-  padding: 0.45rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-```
-
-17. `src/app/app.config.ts` — Router at bootstrap
-
-```typescript
-import {
-  ApplicationConfig,
-  provideBrowserGlobalErrorListeners,
-} from "@angular/core";
-import { provideRouter } from "@angular/router";
-import { Dashboard } from "./dashboard/dashboard";
-import { MemberDetail } from "./member-detail/member-detail";
-
-const routes = [
-  { path: "", component: Dashboard },
-  { path: "members/:id", component: MemberDetail },
-];
-
-export const appConfig: ApplicationConfig = {
-  providers: [provideBrowserGlobalErrorListeners(), provideRouter(routes)],
-};
-```
-
-18. `src/main.ts` — bootstrap
-
-```typescript
-import { bootstrapApplication } from "@angular/platform-browser";
-import { appConfig } from "./app/app.config";
-import { App } from "./app/app";
-
-bootstrapApplication(App, appConfig).catch((err) => console.error(err));
-```
-
-Run the app
-
-```
-npm install
-ng serve --open
-```
-
-If anything fails, run `ng build` to see compiler errors with file and line.
-
-Suggested exercises
-
-- Add validation to the Add form (prevent blank or numbers-only names).
-- Show a confirmation dialog before remove.
-- Add an icon for inactive members.
-
-That completes the full build-from-scratch README with every implemented file included above. Follow the file order and paste the contents into the corresponding files in your `club-dashboard/src/app` folder, then run `ng serve --open`.
+Happy coding! 🚀
