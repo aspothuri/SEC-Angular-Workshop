@@ -1,0 +1,6 @@
+<ul>
+  <li *ngFor="let m of members$ | async" [class.inactive]="!m.active">
+    {{ m.name }} — {{ m.active ? 'Active' : 'Inactive' }}
+    <button (click)="toggle(m)">Toggle</button>
+  </li>
+</ul>
