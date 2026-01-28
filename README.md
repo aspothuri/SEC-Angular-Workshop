@@ -1,14 +1,23 @@
 # Angular Workshop: Building a Club Dashboard
 
-Welcome! In this hands-on workshop you'll learn core Angular concepts by building a **Club Members Dashboard** from scratch. By the end, you'll understand:
+Welcome! In this hands-on workshop you'll learn core Angular concepts by building a **Club Members Dashboard** from scratch. By the end, you'll have built an app with:
+
+- A dashboard showing member statistics
+- A member list with toggle and remove actions
+- A form to add new members
+- A detail page to view and edit individual members
+- Navigation between pages using Angular Router
+
+**What you'll learn:**
 
 - Components (the building blocks of Angular apps)
 - Services & Dependency Injection (sharing data across components)
 - Data binding (connecting TypeScript to templates)
 - Observables & the AsyncPipe (reactive data flow)
 - Routing (navigating between views)
+- Route parameters (passing data via URLs)
 
-**Time:** ~45 minutes  
+**Time:** ~60 minutes  
 **Difficulty:** Beginner-friendly (some JavaScript/TypeScript experience helpful)
 
 ---
@@ -17,7 +26,7 @@ Welcome! In this hands-on workshop you'll learn core Angular concepts by buildin
 
 Before we start, make sure you have:
 
-1. **Node.js** (v16 or higher) — [Download here](https://nodejs.org/)
+1. **Node.js** (v18 or higher) — [Download here](https://nodejs.org/)
 2. **A code editor** — VS Code recommended
 3. **Angular CLI** — Install globally:
    ```bash
@@ -27,7 +36,7 @@ Before we start, make sure you have:
 Verify your setup:
 
 ```bash
-node --version   # Should show v16+
+node --version   # Should show v18+
 ng version       # Should show Angular CLI version
 ```
 
@@ -65,11 +74,11 @@ ng serve --open
 
 Your browser should open to `http://localhost:4200` showing the Angular welcome page.
 
-> **Checkpoint:** You should see "Hello, club-dashboard" in your browser. Keep the server running!
+> **✓ Checkpoint:** You should see "Hello, club-dashboard" in your browser. Keep the server running throughout!
 
 ---
 
-## Part 2: Understanding Components (10 min)
+## Part 2: Understanding Components (5 min)
 
 ### What is a Component?
 
@@ -86,7 +95,10 @@ Open `src/app/app.ts`. You'll see something like:
 ```typescript
 @Component({
   selector: "app-root",
-  // ...
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: "./app.html",
+  styleUrl: "./app.css",
 })
 export class App {}
 ```
@@ -94,9 +106,11 @@ export class App {}
 **Key concepts:**
 
 - `@Component` is a **decorator** that tells Angular "this class is a component"
-- `selector: 'app-root'` means this component is used as `<app-root>` in HTML
+- `selector: 'app-root'` means this component renders as `<app-root>` in HTML
+- `standalone: true` means this component doesn't need an NgModule
+- `imports: [...]` lists other components/directives this component uses
 - `templateUrl` points to the HTML file
-- `styleUrls` points to the CSS file
+- `styleUrl` points to the CSS file
 
 ### Step 2.2 — Simplify the root component
 
@@ -107,9 +121,9 @@ Replace the contents of `src/app/app.html` with:
 <p>Welcome to our club!</p>
 ```
 
-Save the file. Your browser should automatically refresh and show your new content.
+Save the file. Your browser should automatically refresh.
 
-> **Checkpoint:** You should see "Club Members Dashboard" heading in your browser.
+> **✓ Checkpoint:** You should see "Club Members Dashboard" heading in your browser.
 
 ---
 
@@ -121,7 +135,7 @@ A **service** is a class that holds data or logic that multiple components can s
 
 ### Step 3.1 — Generate the members service
 
-In your terminal (open a new one if needed, keep ng serve running):
+In a new terminal (keep `ng serve` running):
 
 ```bash
 ng generate service members --skip-tests
@@ -129,58 +143,63 @@ ng generate service members --skip-tests
 
 This creates `src/app/members.ts`.
 
-### Step 3.2 — Define the Member interface
+### Step 3.2 — Define the Member type
 
-Open `src/app/members.ts` and add an interface above the class:
-
-```typescript
-import { Injectable } from "@angular/core";
-
-// Add this interface - it describes what a Member looks like
-export interface Member {
-  id: number;
-  name: string;
-  active: boolean;
-}
-
-@Injectable({
-  providedIn: "root",
-})
-export class MembersService {
-  // We'll add code here next
-}
-```
-
-**Why an interface?** TypeScript interfaces define the "shape" of our data. This gives us autocompletion and catches errors early.
-
-### Step 3.3 — Add member data using BehaviorSubject
-
-We'll use RxJS `BehaviorSubject` to store our members. This lets components subscribe to changes.
-
-Update `members.ts`:
+Open `src/app/members.ts` and replace its contents with:
 
 ```typescript
 import { Injectable } from "@angular/core";
 import { BehaviorSubject } from "rxjs";
 
-export interface Member {
+// Define what a Member looks like
+export type Member = {
   id: number;
   name: string;
   active: boolean;
-}
+};
 
-@Injectable({
-  providedIn: "root",
-})
+@Injectable({ providedIn: "root" })
 export class MembersService {
+  // We'll add the implementation next
+}
+```
+
+**Why a type?** TypeScript types define the "shape" of our data. This gives us autocompletion and catches errors early.
+
+### Step 3.3 — Add member data using BehaviorSubject
+
+We'll use RxJS `BehaviorSubject` to store our members. This lets components subscribe to changes reactively.
+
+Update `src/app/members.ts` to add the data and observable:
+
+```typescript
+import { Injectable } from "@angular/core";
+import { BehaviorSubject } from "rxjs";
+
+export type Member = {
+  id: number;
+  name: string;
+  active: boolean;
+};
+
+@Injectable({ providedIn: "root" })
+export class MembersService {
+  private nextId = 4; // Track the next ID to assign
+
   // Private BehaviorSubject holds the current list
-  private _members = new BehaviorSubject<Member[]>([
-    { id: 1, name: "Alice", active: true },
-    { id: 2, name: "Bob", active: false },
+  private membersSubject = new BehaviorSubject<Member[]>([
+    { id: 1, name: "Ava", active: true },
+    { id: 2, name: "Ben", active: true },
+    { id: 3, name: "Chris", active: false },
   ]);
 
-  // Public observable that components can subscribe to
-  members$ = this._members.asObservable();
+  // Public observable that components subscribe to
+  members$ = this.membersSubject.asObservable();
+
+  // Synchronous getter for current value (useful sometimes)
+  get members(): Member[] {
+    return this.membersSubject.value;
+  }
 }
 ```
 
@@ -190,137 +209,209 @@ export class MembersService {
 - `members$` (the `$` suffix is a convention for observables) is what components subscribe to
 - `providedIn: 'root'` means one instance is shared across the whole app
 
-> **Checkpoint:** No visible changes yet, but the service is ready!
+### Step 3.4 — Add methods to modify members
+
+Add these methods inside the `MembersService` class:
+
+```typescript
+  add(name: string) {
+    const value = name.trim();
+    if (!value) return;
+
+    this.membersSubject.next([
+      ...this.membersSubject.value,
+      { id: this.nextId++, name: value, active: true },
+    ]);
+  }
+
+  toggle(member: Member) {
+    this.membersSubject.next(
+      this.membersSubject.value.map(m =>
+        m.id === member.id ? { ...m, active: !m.active } : m
+      )
+    );
+  }
+
+  updateName(id: number, name: string) {
+    const value = name.trim();
+    if (!value) return;
+
+    this.membersSubject.next(
+      this.membersSubject.value.map(m =>
+        m.id === id ? { ...m, name: value } : m
+      )
+    );
+  }
+
+  remove(id: number) {
+    this.membersSubject.next(
+      this.membersSubject.value.filter(m => m.id !== id)
+    );
+  }
+```
+
+**What each method does:**
+
+- `add()` — creates a new member with a unique ID
+- `toggle()` — flips the `active` status
+- `updateName()` — changes a member's name
+- `remove()` — deletes a member from the list
+
+> **✓ Checkpoint:** No visible changes yet, but the service is ready with all CRUD operations!
 
 ---
 
-## Part 4: Display the Member List (10 min)
+## Part 4: Create the Member List Component (10 min)
 
-### Step 4.1 — Generate the member-list component
+### Step 4.1 — Generate the component
 
 ```bash
 ng generate component member-list --skip-tests
 ```
 
-This creates a folder `src/app/member-list/` with three files.
+This creates `src/app/member-list/` with three files.
 
-### Step 4.2 — Inject the service into the component
+### Step 4.2 — Inject the service and expose the observable
 
-Open `src/app/member-list/member-list.ts` and update it:
+Open `src/app/member-list/member-list.ts` and replace with:
 
 ```typescript
 import { Component } from "@angular/core";
-import { AsyncPipe, NgFor } from "@angular/common";
-import { MembersService } from "../members";
+import { NgFor, AsyncPipe } from "@angular/common";
+import { RouterLink } from "@angular/router";
+import { MembersService, Member } from "../members";
 
 @Component({
   selector: "app-member-list",
   standalone: true,
-  imports: [AsyncPipe, NgFor],
+  imports: [NgFor, AsyncPipe, RouterLink],
   templateUrl: "./member-list.html",
-  styleUrl: "./member-list.css",
+  styleUrls: ["./member-list.css"],
 })
 export class MemberList {
-  // Inject the service through the constructor
   constructor(private membersService: MembersService) {}
 
-  // Expose the observable to the template
+  // Expose observable to template via getter
   get members$() {
     return this.membersService.members$;
+  }
+
+  toggle(member: Member) {
+    this.membersService.toggle(member);
+  }
+
+  remove(id: number) {
+    this.membersService.remove(id);
   }
 }
 ```
 
 **Key concepts:**
 
-- `constructor(private membersService: MembersService)` — Angular automatically provides the service (Dependency Injection!)
-- We use a getter `members$` to expose the observable to our template
+- `constructor(private membersService: MembersService)` — Angular automatically provides the service
+- We use a **getter** `members$` to expose the observable
+- `RouterLink` is imported so we can link to the detail page
 
-### Step 4.3 — Create the template
+### Step 4.3 — Create the template with actions
 
-Open `src/app/member-list/member-list.html` and replace its contents:
+Open `src/app/member-list/member-list.html` and replace with:
 
 ```html
-<h2>Members</h2>
-
 <ul>
-  <li *ngFor="let member of members$ | async">
-    {{ member.name }} — {{ member.active ? 'Active' : 'Inactive' }}
+  <li *ngFor="let m of members$ | async" [class.inactive]="!m.active">
+    <div class="member-label">
+      <a [routerLink]="['/members', m.id]" class="member-name">{{ m.name }}</a>
+      <span class="member-meta">{{ m.active ? 'Active' : 'Inactive' }}</span>
+    </div>
+
+    <div>
+      <button (click)="toggle(m)">Toggle</button>
+      <button (click)="remove(m.id)">Remove</button>
+    </div>
   </li>
 </ul>
 ```
 
 **Key concepts:**
 
-- `*ngFor` loops through each member in the array
-- `| async` subscribes to the observable and unwraps the value
-- `{{ }}` is interpolation — it displays the value in the template
+- `*ngFor="let m of members$ | async"` — loops through members; `async` subscribes to the observable
+- `[class.inactive]="!m.active"` — adds CSS class conditionally
+- `[routerLink]="['/members', m.id]"` — creates a link to `/members/1`, `/members/2`, etc.
+- `(click)="toggle(m)"` — event binding calls the method when clicked
 
-### Step 4.4 — Add the component to the app
+### Step 4.4 — Add styles
 
-Open `src/app/app.ts` and import the component:
+Open `src/app/member-list/member-list.css`:
 
-```typescript
-import { Component } from "@angular/core";
-import { MemberList } from "./member-list/member-list";
+```css
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
 
-@Component({
-  selector: "app-root",
-  standalone: true,
-  imports: [MemberList],
-  templateUrl: "./app.html",
-  styleUrl: "./app.css",
-})
-export class App {}
-```
+li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  background: #f9fafb;
+  border-radius: 6px;
+}
 
-Now update `src/app/app.html`:
+li.inactive {
+  opacity: 0.6;
+}
 
-```html
-<h1>Club Members Dashboard</h1>
+.member-label {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
 
-<app-member-list></app-member-list>
-```
+.member-name {
+  font-weight: 600;
+  color: #2563eb;
+  text-decoration: none;
+}
 
-Save all files.
+.member-name:hover {
+  text-decoration: underline;
+}
 
-> **Checkpoint:** You should see "Members" with Alice and Bob listed!
+.member-meta {
+  color: #666;
+  font-size: 0.9rem;
+}
 
----
+button {
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.25rem;
+  background: #e5e7eb;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
 
-## Part 5: Add New Members (10 min)
-
-### Step 5.1 — Add the `add()` method to the service
-
-Open `src/app/members.ts` and add this method inside the class:
-
-```typescript
-add(name: string) {
-  const currentList = this._members.getValue();
-  const newId = currentList.length
-    ? Math.max(...currentList.map(m => m.id)) + 1
-    : 1;
-
-  const newMember: Member = { id: newId, name, active: true };
-
-  this._members.next([...currentList, newMember]);
+button:hover {
+  background: #d1d5db;
 }
 ```
 
-**What's happening:**
+> **✓ Checkpoint:** Component created! We'll add it to the page after setting up routing.
 
-1. Get the current list with `getValue()`
-2. Calculate the next ID
-3. Create a new member object
-4. Emit the updated list with `next()`
+---
 
-### Step 5.2 — Generate the member-add component
+## Part 5: Create the Add Member Form (10 min)
+
+### Step 5.1 — Generate the component
 
 ```bash
 ng generate component member-add --skip-tests
 ```
 
-### Step 5.3 — Build the add form
+### Step 5.2 — Build the form logic
 
 Open `src/app/member-add/member-add.ts`:
 
@@ -334,22 +425,21 @@ import { MembersService } from "../members";
   standalone: true,
   imports: [FormsModule],
   templateUrl: "./member-add.html",
-  styleUrl: "./member-add.css",
+  styleUrls: ["./member-add.css"],
 })
 export class MemberAdd {
-  name = ""; // This will be bound to the input
+  name = ""; // Bound to the input field
 
   constructor(private membersService: MembersService) {}
 
   add() {
-    const trimmed = this.name.trim();
-    if (!trimmed) return; // Don't add empty names
-
-    this.membersService.add(trimmed);
-    this.name = ""; // Clear the input
+    this.membersService.add(this.name);
+    this.name = ""; // Clear input after adding
   }
 }
 ```
+
+### Step 5.3 — Create the template
 
 Open `src/app/member-add/member-add.html`:
 
@@ -366,11 +456,10 @@ Open `src/app/member-add/member-add.html`:
 
 **Key concepts:**
 
-- `[(ngModel)]="name"` is **two-way binding** — the input and the `name` property stay in sync
-- `(click)="add()"` is **event binding** — calls `add()` when clicked
-- `(keyup.enter)="add()"` — also triggers on Enter key
+- `[(ngModel)]="name"` is **two-way binding** — the input and `name` property stay in sync
+- `(keyup.enter)="add()"` — triggers add when pressing Enter
 
-### Step 5.4 — Add some basic styling
+### Step 5.4 — Add styles
 
 Open `src/app/member-add/member-add.css`:
 
@@ -382,10 +471,10 @@ Open `src/app/member-add/member-add.css`:
 }
 
 input {
+  flex: 1;
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 4px;
-  flex: 1;
 }
 
 button {
@@ -402,182 +491,490 @@ button:hover {
 }
 ```
 
-### Step 5.5 — Wire it into the app
+> **✓ Checkpoint:** Add form ready! Next we'll create the dashboard to combine these.
 
-Update `src/app/app.ts`:
+---
+
+## Part 6: Create the Dashboard Component (10 min)
+
+The Dashboard combines the add form and member list, plus shows statistics.
+
+### Step 6.1 — Generate the component
+
+```bash
+ng generate component dashboard --skip-tests
+```
+
+### Step 6.2 — Add statistics using observables
+
+Open `src/app/dashboard/dashboard.ts`:
 
 ```typescript
 import { Component } from "@angular/core";
-import { MemberList } from "./member-list/member-list";
-import { MemberAdd } from "./member-add/member-add";
+import { AsyncPipe } from "@angular/common";
+import { MemberAdd } from "../member-add/member-add";
+import { MemberList } from "../member-list/member-list";
+import { MembersService } from "../members";
+import { map } from "rxjs";
 
 @Component({
-  selector: "app-root",
+  selector: "app-dashboard",
   standalone: true,
-  imports: [MemberList, MemberAdd],
-  templateUrl: "./app.html",
-  styleUrl: "./app.css",
+  imports: [MemberAdd, MemberList, AsyncPipe],
+  templateUrl: "./dashboard.html",
+  styleUrls: ["./dashboard.css"],
 })
-export class App {}
+export class Dashboard {
+  constructor(private members: MembersService) {}
+
+  // Derive total count from the members observable
+  get total$() {
+    return this.members.members$.pipe(map((m) => m.length));
+  }
+
+  // Derive active count from the members observable
+  get active$() {
+    return this.members.members$.pipe(
+      map((m) => m.filter((x) => x.active).length),
+    );
+  }
+}
 ```
 
-Update `src/app/app.html`:
+**Key concepts:**
+
+- `map()` transforms the observable data — here we're computing counts
+- We compose child components (`MemberAdd`, `MemberList`) by importing them
+- Statistics update automatically when members change!
+
+### Step 6.3 — Create the template
+
+Open `src/app/dashboard/dashboard.html`:
 
 ```html
 <h1>Club Members Dashboard</h1>
 
+<div class="stats">
+  <div>Total: <strong>{{ total$ | async }}</strong></div>
+  <div>Active: <strong>{{ active$ | async }}</strong></div>
+</div>
+
+<hr />
+
 <app-member-add></app-member-add>
+
+<hr />
 
 <app-member-list></app-member-list>
 ```
 
-Save all files.
+### Step 6.4 — Add styles
 
-> **Checkpoint:** Type a name and click "Add Member" — it should appear in the list instantly!
+Open `src/app/dashboard/dashboard.css`:
+
+```css
+h1 {
+  margin-bottom: 0.25rem;
+}
+
+.stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #666;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1rem 0;
+}
+```
+
+> **✓ Checkpoint:** Dashboard ready with stats! Now we need routing to display it.
 
 ---
 
-## Part 6: Toggle Member Status (5 min)
+## Part 7: Create the Member Detail Page (10 min)
 
-### Step 6.1 — Add toggle method to service
+This page shows a single member and lets you edit their name.
 
-Open `src/app/members.ts` and add:
+### Step 7.1 — Generate the component
 
-```typescript
-toggle(member: Member) {
-  const updated = this._members.getValue().map(m =>
-    m.id === member.id
-      ? { ...m, active: !m.active }
-      : m
-  );
-  this._members.next(updated);
-}
+```bash
+ng generate component member-detail --skip-tests
 ```
 
-### Step 6.2 — Add toggle button to the list
+### Step 7.2 — Read the route parameter
 
-Update `src/app/member-list/member-list.ts`:
+Open `src/app/member-detail/member-detail.ts`:
 
 ```typescript
 import { Component } from "@angular/core";
-import { AsyncPipe, NgFor } from "@angular/common";
-import { MembersService, Member } from "../members";
+import { CommonModule } from "@angular/common";
+import { ActivatedRoute, Router, RouterModule } from "@angular/router";
+import { MembersService } from "../members";
+import { map } from "rxjs/operators";
+import { FormsModule } from "@angular/forms";
 
 @Component({
-  selector: "app-member-list",
+  selector: "app-member-detail",
   standalone: true,
-  imports: [AsyncPipe, NgFor],
-  templateUrl: "./member-list.html",
-  styleUrl: "./member-list.css",
+  imports: [CommonModule, RouterModule, FormsModule],
+  templateUrl: "./member-detail.html",
+  styleUrls: ["./member-detail.css"],
 })
-export class MemberList {
-  constructor(private membersService: MembersService) {}
+export class MemberDetail {
+  name = ""; // For the edit input
 
-  get members$() {
-    return this.membersService.members$;
+  constructor(
+    private route: ActivatedRoute,
+    private members: MembersService,
+    private router: Router,
+  ) {}
+
+  // Get the ID from the URL (e.g., /members/2 → id = 2)
+  get id() {
+    return Number(this.route.snapshot.paramMap.get("id"));
   }
 
-  toggle(member: Member) {
-    this.membersService.toggle(member);
+  // Find the member with this ID
+  get member$() {
+    return this.members.members$.pipe(
+      map((list) => list.find((m) => m.id === this.id)),
+    );
+  }
+
+  save() {
+    if (!this.name.trim()) return;
+    this.members.updateName(this.id, this.name);
+    this.router.navigate(["/"]); // Go back to dashboard
+  }
+
+  toggle(m: any) {
+    this.members.toggle(m);
+  }
+
+  remove() {
+    this.members.remove(this.id);
+    this.router.navigate(["/"]); // Go back to dashboard
   }
 }
 ```
 
-Update `src/app/member-list/member-list.html`:
+**Key concepts:**
+
+- `ActivatedRoute` gives access to route parameters
+- `this.route.snapshot.paramMap.get('id')` reads the `:id` from the URL
+- `Router.navigate(['/'])` programmatically navigates to another page
+
+### Step 7.3 — Create the template
+
+Open `src/app/member-detail/member-detail.html`:
 
 ```html
-<h2>Members</h2>
+<ng-container *ngIf="member$ | async as m; else notFound">
+  <h2>Member Details</h2>
 
-<ul>
-  <li *ngFor="let member of members$ | async" [class.inactive]="!member.active">
-    <span>{{ member.name }} — {{ member.active ? 'Active' : 'Inactive' }}</span>
-    <button (click)="toggle(member)">Toggle</button>
-  </li>
-</ul>
+  <div class="detail">
+    <div>
+      <div class="label">Name</div>
+      <div class="value">{{ m.name }}</div>
+    </div>
+
+    <div>
+      <div class="label">Status</div>
+      <div class="value">{{ m.active ? 'Active' : 'Inactive' }}</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <input [(ngModel)]="name" placeholder="New name" />
+    <button (click)="save()">Save</button>
+    <button (click)="toggle(m)">Toggle</button>
+    <button (click)="remove()">Remove</button>
+    <a routerLink="/">Back</a>
+  </div>
+</ng-container>
+
+<ng-template #notFound>
+  <p>Member not found.</p>
+  <a routerLink="/">Back</a>
+</ng-template>
 ```
 
-**New concept:**
+**Key concepts:**
 
-- `[class.inactive]="!member.active"` — conditionally adds the `inactive` CSS class
+- `*ngIf="member$ | async as m; else notFound"` — if member exists, render content; otherwise show `#notFound` template
+- `<ng-template #notFound>` — a named template block for the "not found" case
+- `routerLink="/"` — declarative navigation back to home
 
-Add to `src/app/member-list/member-list.css`:
+### Step 7.4 — Add styles
+
+Open `src/app/member-detail/member-detail.css`:
 
 ```css
-ul {
-  list-style: none;
-  padding: 0;
-}
-
-li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
+h2 {
   margin-bottom: 0.5rem;
-  background: #f9fafb;
-  border-radius: 4px;
 }
 
-li.inactive {
-  opacity: 0.6;
+.detail {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1rem;
+}
+
+.label {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.value {
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+input {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 button {
-  padding: 0.25rem 0.5rem;
-  background: #e5e7eb;
+  padding: 0.4rem 0.75rem;
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  background: #e5e7eb;
+}
+
+button:hover {
+  background: #d1d5db;
+}
+
+a {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 ```
 
-> **Checkpoint:** Click "Toggle" — the member should dim and show "Inactive"!
+> **✓ Checkpoint:** Detail page ready! Now let's wire up routing.
+
+---
+
+## Part 8: Set Up Routing (10 min)
+
+Routing lets users navigate between the Dashboard and Member Detail pages.
+
+### Step 8.1 — Configure routes
+
+Open `src/app/app.config.ts` and replace with:
+
+```typescript
+import {
+  ApplicationConfig,
+  provideBrowserGlobalErrorListeners,
+} from "@angular/core";
+import { provideRouter } from "@angular/router";
+import { Dashboard } from "./dashboard/dashboard";
+import { MemberDetail } from "./member-detail/member-detail";
+
+const routes = [
+  { path: "", component: Dashboard },
+  { path: "members/:id", component: MemberDetail },
+];
+
+export const appConfig: ApplicationConfig = {
+  providers: [provideBrowserGlobalErrorListeners(), provideRouter(routes)],
+};
+```
+
+**Key concepts:**
+
+- `path: ''` — the default route (home page)
+- `path: 'members/:id'` — a route with a **parameter**; `:id` is a placeholder
+- `provideRouter(routes)` — registers the routes with Angular
+
+### Step 8.2 — Update the root component
+
+Open `src/app/app.ts`:
+
+```typescript
+import { Component } from "@angular/core";
+import { RouterOutlet } from "@angular/router";
+
+@Component({
+  selector: "app-root",
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: "./app.html",
+  styleUrls: ["./app.css"],
+})
+export class App {}
+```
+
+### Step 8.3 — Add navigation and router outlet
+
+Open `src/app/app.html`:
+
+```html
+<nav>
+  <a routerLink="/">Dashboard</a>
+</nav>
+
+<div class="app-shell">
+  <router-outlet></router-outlet>
+</div>
+```
+
+**Key concepts:**
+
+- `<router-outlet>` is where Angular renders the current route's component
+- `routerLink="/"` creates a link to the home route
+
+### Step 8.4 — Add global styles
+
+Open `src/app/app.css`:
+
+```css
+:root {
+  --bg: #f6f8fa;
+  --card: #ffffff;
+  --accent: #2563eb;
+  --border: #e5e7eb;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background: var(--bg);
+  color: #111827;
+}
+
+nav {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1rem;
+}
+
+nav a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+nav a:hover {
+  text-decoration: underline;
+}
+
+.app-shell {
+  max-width: 800px;
+  margin: 1.5rem auto;
+  padding: 1rem;
+  background: var(--card);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+```
+
+### Step 8.5 — Verify main.ts is correct
+
+Open `src/main.ts` and ensure it looks like:
+
+```typescript
+import { bootstrapApplication } from "@angular/platform-browser";
+import { appConfig } from "./app/app.config";
+import { App } from "./app/app";
+
+bootstrapApplication(App, appConfig).catch((err) => console.error(err));
+```
+
+> **✓ Checkpoint:** Save all files. Your app should now show:
+>
+> - The Dashboard at `http://localhost:4200/`
+> - Member detail at `http://localhost:4200/members/1`
+> - Click a member name to navigate to their detail page!
 
 ---
 
 ## Congratulations! 🎉
 
-You've built a working Angular app with:
+You've built a complete Angular application with:
 
-✅ **Components** — MemberList, MemberAdd  
-✅ **Services** — MembersService with shared state  
-✅ **Dependency Injection** — Services injected into components  
-✅ **Data Binding** — Two-way with ngModel, event binding with (click)  
-✅ **Observables** — BehaviorSubject + AsyncPipe
+| Feature       | What you learned                                 |
+| ------------- | ------------------------------------------------ |
+| Dashboard     | Composing components, deriving data with `map()` |
+| Member List   | `*ngFor`, conditional classes, event binding     |
+| Add Form      | Two-way binding with `[(ngModel)]`               |
+| Member Detail | Route parameters, `*ngIf` with `else`            |
+| Service       | `BehaviorSubject`, dependency injection          |
+| Routing       | Route config, `<router-outlet>`, `routerLink`    |
+
+---
+
+## Key Angular Concepts Summary
+
+| Concept              | Syntax                              | Purpose                  |
+| -------------------- | ----------------------------------- | ------------------------ |
+| Interpolation        | `{{ value }}`                       | Display a value          |
+| Property binding     | `[property]="value"`                | Set an element property  |
+| Event binding        | `(event)="handler()"`               | React to DOM events      |
+| Two-way binding      | `[(ngModel)]="value"`               | Sync input with property |
+| Structural directive | `*ngFor`, `*ngIf`                   | Add/remove DOM elements  |
+| Async pipe           | `observable$ \| async`              | Subscribe in template    |
+| Class binding        | `[class.name]="condition"`          | Toggle CSS class         |
+| Router link          | `[routerLink]="['/path', param]"`   | Navigate declaratively   |
+| Route parameter      | `route.snapshot.paramMap.get('id')` | Read URL params          |
 
 ---
 
 ## Bonus Challenges
 
-If you have extra time, try these:
+Try extending the app:
 
-1. **Add a Remove button** — Add a `remove(id: number)` method to the service and a delete button to each list item
-
-2. **Show statistics** — Display "Total: X | Active: Y" above the list using `members$.pipe(map(...))`
-
-3. **Add routing** — Create a detail page for each member:
-
-   ```bash
-   ng generate component member-detail --skip-tests
-   ```
-
-   Then configure routes in `app.config.ts`
-
-4. **Persist to localStorage** — Save members to localStorage so they survive page refresh
+1. **Validation** — Prevent adding members with empty or numeric-only names
+2. **Confirmation** — Show a confirm dialog before removing a member
+3. **Sort** — Add buttons to sort members by name or status
+4. **Search** — Add a filter input to search members by name
+5. **Persist** — Save members to `localStorage` so they survive page refresh
 
 ---
 
-## Quick Reference
+## Troubleshooting
 
-| Concept              | Syntax                     | Purpose                  |
-| -------------------- | -------------------------- | ------------------------ |
-| Interpolation        | `{{ value }}`              | Display a value          |
-| Property binding     | `[property]="value"`       | Set an element property  |
-| Event binding        | `(event)="handler()"`      | React to events          |
-| Two-way binding      | `[(ngModel)]="value"`      | Sync input with property |
-| Structural directive | `*ngFor`, `*ngIf`          | Add/remove elements      |
-| Async pipe           | `observable$ \| async`     | Subscribe in template    |
-| Class binding        | `[class.name]="condition"` | Toggle CSS class         |
+**"Can't bind to 'ngModel'"**  
+→ Make sure `FormsModule` is in the component's `imports` array
+
+**"Cannot find module '../members'"**  
+→ Check that `src/app/members.ts` exists and exports `MembersService`
+
+**Page is blank**  
+→ Check the browser console for errors; run `ng build` to see compile errors
+
+**Route not working**  
+→ Ensure `provideRouter(routes)` is in `app.config.ts` and `RouterOutlet` is imported in `app.ts`
 
 ---
 
