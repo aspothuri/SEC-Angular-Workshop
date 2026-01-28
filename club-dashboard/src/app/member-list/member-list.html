@@ -1,6 +1,13 @@
 <ul>
   <li *ngFor="let m of members$ | async" [class.inactive]="!m.active">
-    {{ m.name }} — {{ m.active ? 'Active' : 'Inactive' }}
-    <button (click)="toggle(m)">Toggle</button>
+    <div class="member-label">
+      <a [routerLink]="['/members', m.id]" class="member-name">{{ m.name }}</a>
+      <span class="member-meta">{{ m.active ? 'Active' : 'Inactive' }}</span>
+    </div>
+
+    <div>
+      <button (click)="toggle(m)">Toggle</button>
+      <button (click)="remove(m.id)">Remove</button>
+    </div>
   </li>
 </ul>

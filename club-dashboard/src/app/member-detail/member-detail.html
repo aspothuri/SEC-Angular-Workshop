@@ -1,0 +1,28 @@
+<ng-container *ngIf="member$ | async as m; else notFound">
+	<h2>Member Details</h2>
+
+	<div class="detail">
+		<div>
+			<div class="label">Name</div>
+			<div class="value">{{ m.name }}</div>
+		</div>
+
+		<div>
+			<div class="label">Status</div>
+			<div class="value">{{ m.active ? 'Active' : 'Inactive' }}</div>
+		</div>
+	</div>
+
+	<div class="actions">
+		<input [(ngModel)]="name" placeholder="New name" />
+		<button (click)="save()">Save</button>
+		<button (click)="toggle(m)">Toggle</button>
+		<button (click)="remove()">Remove</button>
+		<a routerLink="/">Back</a>
+	</div>
+</ng-container>
+
+<ng-template #notFound>
+	<p>Member not found.</p>
+	<a routerLink="/">Back</a>
+</ng-template>

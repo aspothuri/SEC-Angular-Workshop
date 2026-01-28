@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { NgFor, AsyncPipe } from '@angular/common';
-import { MembersService, Member } from '../members'; // adjust path if needed
+import { RouterLink } from '@angular/router';
+import { MembersService, Member } from '../members';
 
 @Component({
   selector: 'app-member-list',
   standalone: true,
-  imports: [NgFor, AsyncPipe],
+  imports: [NgFor, AsyncPipe, RouterLink],
   templateUrl: './member-list.html',
   styleUrls: ['./member-list.css'],
 })
@@ -18,5 +19,9 @@ export class MemberList {
 
   toggle(member: Member) {
     this.membersService.toggle(member);
+  }
+  
+  remove(id: number) {
+    this.membersService.remove(id);
   }
 }

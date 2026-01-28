@@ -33,6 +33,19 @@ export class MembersService {
     ]);
   }
 
+  updateName(id: number, name: string) {
+    const value = name.trim();
+    if (!value) return;
+
+    this.membersSubject.next(
+      this.membersSubject.value.map(m => (m.id === id ? { ...m, name: value } : m))
+    );
+  }
+
+  remove(id: number) {
+    this.membersSubject.next(this.membersSubject.value.filter(m => m.id !== id));
+  }
+
   toggle(member: Member) {
     this.membersSubject.next(
       this.membersSubject.value.map(m =>

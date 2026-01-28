@@ -1,0 +1,14 @@
+<h1>Club Members Dashboard</h1>
+
+<div class="stats">
+  <div>Total: <strong>{{ total$ | async }}</strong></div>
+  <div>Active: <strong>{{ active$ | async }}</strong></div>
+</div>
+
+<hr />
+
+<app-member-add></app-member-add>
+
+<hr />
+
+<app-member-list></app-member-list>
